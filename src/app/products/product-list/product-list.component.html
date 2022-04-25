@@ -2,6 +2,10 @@
     {{ title }}
 </h2>
 
+<h3 *ngIf="favouriteAdded$ | async as favouriteAdded">
+    Product {{ favouriteAdded.name }} added to your favourites!
+</h3>
+
 <div class="right">
     {{ productsNumber$ | async }} products
     <span *ngIf="filtered$ | async">(filtered)</span> /
@@ -17,11 +21,7 @@
     &nbsp;
 </div>
 
-<ng-template #loading>
-    <h2 class="loading">Loading products</h2>
-</ng-template>
-
-<ul class="products" *ngIf="filteredProducts$ | async as products;else loading">
+<ul class="products" *ngIf="filteredProducts$ | async as products">
     <li *ngFor="let product of products | slice:start:end"
         (click)="onSelect(product)"
         [class.discontinued]="product.discontinued"

@@ -7,6 +7,7 @@ import { tap, catchError, startWith, count, flatMap, map, debounceTime, filter, 
 import { Product } from '../product.interface';
 import { ProductService } from '../product.service';
 import { FavouriteService } from '../favourite.service';
+import { LoadingService } from 'src/app/services/loading.service';
 
 @Component({
   selector: 'app-product-list',
@@ -17,6 +18,7 @@ export class ProductListComponent implements OnInit {
 
   title: string = 'Products';
   selectedProduct: Product;
+  favouriteAdded$: Observable<Product>;
 
   products$: Observable<Product[]>;
   productsNumber$: Observable<number | string>;
@@ -65,8 +67,16 @@ export class ProductListComponent implements OnInit {
   constructor(
     private productService: ProductService,
     private favouriteService: FavouriteService,
-    private router: Router) {
+    private router: Router,
+    private loadingService: LoadingService) {
 
+      this.favouriteAdded$ =
+                this
+                  .favouriteService
+                  .favouriteAdded$
+                  .pipe(
+                    tap(p => console.log('new favourite: ' + p.name))
+                  )
 
   }
 
@@ -78,10 +88,13 @@ export class ProductListComponent implements OnInit {
     this.filter$ = this.filter
                         .valueChanges
                         .pipe(
+                          tap(console.log),
                           debounceTime(500),
                           map(text => text.trim()), // remove extras white spaces
+                          tap(console.log),
                           filter(text => text == "" || text.length > 2), // filter 3 char mon (or no filter)
                           distinctUntilChanged(), // get nothing until value changed
+                          tap(console.log),
                           tap(text => this.firstPage()),
                           startWith('')
                         );
@@ -95,6 +108,8 @@ export class ProductListComponent implements OnInit {
     this.products$ = this
                       .productService
                       .products$;
+
+    this.loadingService.showLoaderUntilCompleted(this.products$);
 
     this.filteredProducts$ = combineLatest([this.products$, this.filter$])
       .pipe(

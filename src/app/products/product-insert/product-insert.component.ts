@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 
 import { ProductService } from '../product.service';
 import { fromEvent } from 'rxjs';
-import { exhaustMap } from 'rxjs/operators';
+import { exhaustMap, tap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-product-insert',
