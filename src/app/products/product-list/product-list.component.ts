@@ -2,7 +2,7 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormControl } from '@angular/forms';
 import { Observable, EMPTY, combineLatest, Subscription } from 'rxjs';
-import { tap, catchError, startWith, count, flatMap, map, debounceTime, filter } from 'rxjs/operators';
+import { tap, catchError, startWith, count, flatMap, map, debounceTime, filter, distinctUntilChanged } from 'rxjs/operators';
 
 import { Product } from '../product.interface';
 import { ProductService } from '../product.service';
@@ -17,14 +17,27 @@ export class ProductListComponent implements OnInit {
 
   title: string = 'Products';
   selectedProduct: Product;
+
   products$: Observable<Product[]>;
+  productsNumber$: Observable<number | string>;
+  filter$: Observable<string>;
+  filtered$: Observable<Boolean>;
+  filteredProducts$: Observable<Product[]>;
+
   errorMessage;
+  filter: FormControl = new FormControl("");
 
   // Pagination
   pageSize = 5;
   start = 0;
   end = this.pageSize;
   currentPage = 1;
+
+  firstPage() {
+    this.start = 0;
+    this.end = this.pageSize;
+    this.currentPage = 1;
+  }
 
   previousPage() {
     this.start -= this.pageSize;
@@ -53,19 +66,55 @@ export class ProductListComponent implements OnInit {
     private productService: ProductService,
     private favouriteService: FavouriteService,
     private router: Router) {
+
+
   }
+
 
   ngOnInit(): void {
     // Self url navigation will refresh the page ('Refresh List' button)
     this.router.routeReuseStrategy.shouldReuseRoute = () => false;
 
+    this.filter$ = this.filter
+                        .valueChanges
+                        .pipe(
+                          debounceTime(500),
+                          map(text => text.trim()), // remove extras white spaces
+                          filter(text => text == "" || text.length > 2), // filter 3 char mon (or no filter)
+                          distinctUntilChanged(), // get nothing until value changed
+                          tap(text => this.firstPage()),
+                          startWith('')
+                        );
+
+    this.filtered$ = this
+                        .filter$
+                        .pipe(
+                          map(text => text.length > 0)
+                        );
+
     this.products$ = this
                       .productService
                       .products$;
+
+    this.filteredProducts$ = combineLatest([this.products$, this.filter$])
+      .pipe(
+        map(([products, filterString]) =>
+          products.filter(product =>
+            product.name.toLowerCase().includes(filterString.toLowerCase())
+          )
+        )
+      )
+
+    this.productsNumber$ = this
+                            .filteredProducts$
+                            .pipe(
+                              map(products => products.length),
+                              startWith('loading')
+                            )
   }
 
   refresh() {
     this.productService.initProducts();
     this.router.navigateByUrl('/products'); // Self route navigation
-  }  
+  }
 }
